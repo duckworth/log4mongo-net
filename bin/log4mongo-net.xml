@@ -35,21 +35,6 @@
             </code>
             </summary>
         </member>
-        <member name="M:log4net.Appender.MongoDBAppender.LoggingEventToBSON(log4net.Core.LoggingEvent)">
-            <summary>
-            Create BSON representation of LoggingEvent
-            </summary>
-            <param name="loggingEvent"></param>
-            <returns></returns>
-        </member>
-        <member name="M:log4net.Appender.MongoDBAppender.ExceptionToBSON(System.Exception)">
-            <summary>
-            Create BSON representation of Exception
-            Inner exceptions are handled recursively
-            </summary>
-            <param name="ex"></param>
-            <returns></returns>
-        </member>
         <member name="P:log4net.Appender.MongoDBAppender.LogCollection">
             <summary>
             Mongo collection used for logs
@@ -88,6 +73,24 @@
         <member name="P:log4net.Appender.MongoDBAppender.Password">
             <summary>
             MongoDB database password
+            </summary>
+        </member>
+        <member name="T:log4net.Appender.Log4MongoEvent">
+            <summary>
+            Class to serialize a representation of a log4net LoggingEvent 
+            </summary>
+        </member>
+        <member name="M:log4net.Appender.Log4MongoEvent.ExceptionToLog4MongoException(System.Exception)">
+            <summary>
+            Create representation of Exception
+            Inner exceptions are handled recursively
+            </summary>
+            <param name="ex"></param>
+            <returns></returns>
+        </member>
+        <member name="T:log4net.Appender.Log4MongoException">
+            <summary>
+            Class to serialize a representation of an Exception 
             </summary>
         </member>
     </members>

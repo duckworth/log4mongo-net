@@ -30,7 +30,8 @@
 
 using System;
 using System.Security;
-using MongoDB;
+using MongoDB.Driver;
+using MongoDB.Bson;
 using log4net.Core;
 using System.Text;
 
@@ -76,9 +77,10 @@ namespace log4net.Appender
         private int port = DEFAULT_MONGO_PORT;
         private string dbName = DEFAULT_DB_NAME;
         private string collectionName = DEFAULT_COLLECTION_NAME;
+  
+        protected MongoServer server;
+        protected MongoCollection collection;
 
-        protected Mongo connection;
-        protected IMongoCollection collection;
 
         protected override bool RequiresLayout
         {
@@ -89,11 +91,11 @@ namespace log4net.Appender
         /// Mongo collection used for logs
         /// The main reason of exposing this is to have same log collection available for unit tests
         /// </summary>
-        public IMongoCollection LogCollection
+        public MongoCollection LogCollection
         {
             get { return collection; }
         }
-
+        
         #region Appender configuration properties
 
         /// <summary>
@@ -146,23 +148,27 @@ namespace log4net.Appender
         /// </summary>
         public string Password { get; set; }
 
+
+
         #endregion
 
         public override void ActivateOptions()
         {
             try
             {
-                var mongoConnectionString = new StringBuilder(string.Format("Server={0}:{1}", Host, Port));
+                var mongoConnectionString = new StringBuilder("mongodb://");
+               
                 if (!string.IsNullOrEmpty(UserName) && !string.IsNullOrEmpty(Password))
                 {
                     // use MongoDB authentication
-                    mongoConnectionString.AppendFormat(";Username={0};Password={1}", UserName, Password);
+                    mongoConnectionString.AppendFormat("{0}:{1}@", UserName, Password);
                 }
+                mongoConnectionString.AppendFormat("{0}:{1}", Host, Port);
 
-                connection = new Mongo(mongoConnectionString.ToString());
-                connection.Connect();
-                var db = connection.GetDatabase(DatabaseName);
-                collection = db.GetCollection(CollectionName);
+                server = MongoServer.Create(mongoConnectionString.ToString());
+                server.Connect();
+                var db = server.GetDatabase(DatabaseName);
+                collection = db.GetCollection<Log4MongoEvent>(CollectionName);
             }
             catch (Exception e)
             {
@@ -173,8 +179,7 @@ namespace log4net.Appender
         protected override void OnClose()
         {
             collection = null;
-            connection.Disconnect();
-            connection.Dispose();
+            server.Disconnect();
             base.OnClose();
         }
 
@@ -182,67 +187,8 @@ namespace log4net.Appender
         {
             if (collection != null)
             {
-                var doc = LoggingEventToBSON(loggingEvent);
-                if (doc != null)
-                {
-                    collection.Insert(doc);
-                }
+                collection.Insert(new Log4MongoEvent(loggingEvent));
             }
-        }
-
-        /// <summary>
-        /// Create BSON representation of LoggingEvent
-        /// </summary>
-        /// <param name="loggingEvent"></param>
-        /// <returns></returns>
-        protected Document LoggingEventToBSON(LoggingEvent loggingEvent)
-        {
-            if (loggingEvent == null) return null;
-
-            var toReturn = new Document();
-            toReturn["timestamp"] = loggingEvent.TimeStamp;
-            toReturn["level"] = loggingEvent.Level.ToString();
-            toReturn["thread"] = loggingEvent.ThreadName;
-            toReturn["userName"] = loggingEvent.UserName;
-            toReturn["message"] = loggingEvent.RenderedMessage;
-            toReturn["loggerName"] = loggingEvent.LoggerName;
-                        
-            // location information, if available
-            if (loggingEvent.LocationInformation != null)
-            {
-                toReturn["fileName"] = loggingEvent.LocationInformation.FileName;
-                toReturn["method"] = loggingEvent.LocationInformation.MethodName;
-                toReturn["lineNumber"] = loggingEvent.LocationInformation.LineNumber;
-                toReturn["className"] = loggingEvent.LocationInformation.ClassName;
-            }
-
-            // exception information
-            if (loggingEvent.ExceptionObject != null)
-            {
-                toReturn["exception"] = ExceptionToBSON(loggingEvent.ExceptionObject);
-            }
-            return toReturn;
-        }
-
-        /// <summary>
-        /// Create BSON representation of Exception
-        /// Inner exceptions are handled recursively
-        /// </summary>
-        /// <param name="ex"></param>
-        /// <returns></returns>
-        protected Document ExceptionToBSON(Exception ex)
-        {
-            var toReturn = new Document();
-            toReturn["message"] = ex.Message;
-            toReturn["source"] = ex.Source;
-            toReturn["stackTrace"] = ex.StackTrace;
-            
-            if (ex.InnerException != null)
-            {
-                toReturn["innerException"] = ExceptionToBSON( ex.InnerException);
-            }
-
-            return toReturn;
         }
     }
 }
