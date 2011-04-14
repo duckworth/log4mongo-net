@@ -1,12 +1,12 @@
-log4mongo-net
+log4mongo-net with 10gen driver
 ===============
 log4mongo-net is log4net appender to MongoDB database.
-log4mongo-net is using mongodb-csharp driver - http://github.com/samus/mongodb-csharp
+this forked version of log4mongo-net is using the official 10gen mongo-csharp-driver - https://github.com/mongodb/mongo-csharp-driver
 
 Requirements
 ============
 - .NET 3.5+ required
-- tested with MongoDB 1.2+
+- tested with MongoDB 1.8+
 
 Configuration
 =============
