@@ -68,6 +68,10 @@ namespace log4net.Appender
     /// </summary>
     public class MongoDBAppender : AppenderSkeleton
     {
+        private DateTime lastError = DateTime.MaxValue;
+        private bool inErrorState = false;
+        private double errorDelaySeconds = 30;
+
         protected const string DEFAULT_MONGO_HOST = "localhost";
         protected const int DEFAULT_MONGO_PORT = 27017;
         protected const string DEFAULT_DB_NAME = "log4net_mongodb";
@@ -185,9 +189,28 @@ namespace log4net.Appender
 
         protected override void Append(LoggingEvent loggingEvent)
         {
-            if (collection != null)
+            try
             {
-                collection.Insert(new Log4MongoEvent(loggingEvent));
+                if(!inErrorState)
+                {
+                    collection.Insert(new Log4MongoEvent(loggingEvent));
+                    inErrorState = false;
+                }
+                else
+                {
+                    if(DateTime.Now > lastError.AddSeconds(errorDelaySeconds))
+                    {
+                        collection.Insert(new Log4MongoEvent(loggingEvent));
+                        inErrorState = false;
+                    }
+                }
+
+            }
+            catch(Exception ex)
+            {
+                lastError = DateTime.Now;
+                inErrorState = true;
+                ErrorHandler.Error("An error occurred while inserting to Mongodb.", ex);
             }
         }
     }
